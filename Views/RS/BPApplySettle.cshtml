@@ -1,0 +1,320 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding: 0.5%
+    }
+    tr{
+        font-size:15px
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+        $('.J-datepicker-day').datePicker({
+            format: 'YYYY-MM',
+            language:'en'
+        });
+
+        $("#LoginType").val(@ViewBag.LoginType);
+        if (@ViewBag.LoginType == "1")
+        {
+        }
+        else
+        {
+            $("#StoreNo").val(@ViewBag.LoginStoreNo);
+        }
+    });
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            fnCreateDT();
+        });
+
+        //슈퍼유저시 판매처별 정산상세내역 조회 버튼 이벤트
+        $(document).on("click", ".btnSalesRSDetail", function () {
+
+            var $salesStoreNo = $(this).data("salesstoreno");
+
+            $("#tblSalesRSDetailList").dataTable({
+                ajax: {
+                    "url": "/RS/GetBPApplySettleList",
+                    "type": "POST",
+                    "data": {
+                        "StoreNo"    : $salesStoreNo,
+                        "SettleYM"   : $("#SettleYM").val().replace("-", ""),
+                        "SettleType" : $("#SettleType").val(),
+                        "LoginType"  : 3
+                    }
+                },
+                columns: [
+                    { data: "salesStoreNo" },
+                    { data: "salesStoreName" },
+                    { data: "memberStoreNo" },
+                    { data: "memberStoreName" },
+                    { data: "itemName" },
+                    { data: "itemPrice", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "purchaseCnt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "totalAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "regDate" },
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false
+            });
+
+            $("#SalesRSDetailModal").modal("show");
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        if (@ViewBag.LoginType == "1") {
+            $("#tblSuperRSList").show();
+            $("#tblMemberRSList").hide();
+            $("#tblSalesRSList").hide();
+
+            $("#tblSuperRSList").dataTable({
+                ajax: {
+                    "url": "/RS/GetBPApplySettleList",
+                    "type": "POST",
+                    "data": {
+                        "StoreNo"    : $("#StoreNo").val(),
+                        "SettleYM"   : $("#SettleYM").val().replace("-", ""),
+                        "SettleType" : $("#SettleType").val(),
+                        "LoginType"  : $("#LoginType").val()
+                    }
+                },
+                columns: [
+                    { data: "salesStoreNo" },
+                    { data: null, render: fnRenderStoreName },
+                    { data: "totalCnt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "totalAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') }
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false
+            });
+        }
+        else if (@ViewBag.LoginType == "2") {
+            $("#tblSuperRSList").hide();
+            $("#tblMemberRSList").show();
+            $("#tblSalesRSList").hide();
+
+            $("#tblMemberRSList").dataTable({
+                ajax: {
+                    "url": "/RS/GetBPApplySettleList",
+                    "type": "POST",
+                    "data": {
+                        "StoreNo": $("#StoreNo").val(),
+                        "SettleYM": $("#SettleYM").val().replace("-", ""),
+                        "SettleType": $("#SettleType").val(),
+                        "LoginType": $("#LoginType").val()
+                    }
+                },
+                columns: [
+                    { data: "userNo" },
+                    { data: "userName" },
+                    { data: "salesStoreNo" },
+                    { data: "salesStoreName" },
+                    { data: "applyAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "applyDate" },
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false
+            });
+        }
+        else if (@ViewBag.LoginType == "3") {
+            $("#tblSuperRSList").hide();
+            $("#tblMemberRSList").hide();
+            $("#tblSalesRSList").show();
+
+            $("#tblSalesRSList").dataTable({
+                ajax: {
+                    "url": "/RS/GetBPApplySettleList",
+                    "type": "POST",
+                    "data": {
+                        "StoreNo": $("#StoreNo").val(),
+                        "SettleYM": $("#SettleYM").val().replace("-", ""),
+                        "SettleType": $("#SettleType").val(),
+                        "LoginType": $("#LoginType").val()
+                    }
+                },
+                columns: [
+                    { data: "salesStoreNo" },
+                    { data: "salesStoreName" },
+                    { data: "memberStoreNo" },
+                    { data: "memberStoreName" },
+                    { data: "itemName" },
+                    { data: "itemPrice", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "purchaseCnt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "totalAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "regDate" },
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false
+            });
+        }
+    }
+
+    //------------------------
+    // 슈퍼유저시 - 판매처명 렌더링
+    //------------------------
+    function fnRenderStoreName(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnSalesRSDetail' data-salesstoreno='" + data.salesStoreNo + "'>" + data.salesStoreName + "</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <input type="hidden" id="SettleType" value="2" />
+            <input type="hidden" id="LoginType" />
+            <input type="hidden" id="StoreNo" />
+            <div class="row">
+                <div class="col-3">
+                    <div class="c-datepicker-date-editor c-datepicker-single-editor J-datepicker-day" style="width:240px">
+                        <i class="c-datepicker-range__icon kxiconfont icon-clock"></i>
+                        <input type="text" id="SettleYM" placeholder="정산년월" class="c-datepicker-data-input only-date" value="2020-01" required>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START Super RS List Area -->
+    <div>
+        <table class="table" id="tblSuperRSList" style="display:none">
+            <thead>
+                <tr>
+                    <th>판매처번호</th>
+                    <th>판매처명</th>
+                    <th>총판매개수</th>
+                    <th>총판매금액</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END Super RS List Area -->
+    <!-- START Member RS List Area -->
+    <div>
+        <table class="table" id="tblMemberRSList" style="display:none">
+            <thead>
+                <tr>
+                    <th>직원번호</th>
+                    <th>직원명</th>
+                    <th>판매처번호</th>
+                    <th>판매처명</th>
+                    <th>신청금액</th>
+                    <th>신청일</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END Member RS List Area -->
+    <!-- START Sales RS List Area -->
+    <div>
+        <table class="table" id="tblSalesRSList" style="display:none">
+            <thead>
+                <tr>
+                    <th>판매처번호</th>
+                    <th>판매처명</th>
+                    <th>가맹점번호</th>
+                    <th>가맹점명</th>
+                    <th>상품명</th>
+                    <th>상품금액</th>
+                    <th>구매개수</th>
+                    <th>총금액</th>
+                    <th>등록일</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END Sales RS List Area -->
+
+    <br />
+</div>
+<!-- END Main Page -->
+
+<!-- START SalesStore RS Detail Modal -->
+<div class="modal fade" id="SalesRSDetailModal" tabindex="-1" role="dialog" aria-labelledby="SalesRSDetailModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="SalesRSDetailModal">판매처 정산상세내역</h5>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <table class="table" id="tblSalesRSDetailList">
+                        <thead>
+                            <tr>
+                                <th>판매처번호</th>
+                                <th>판매처명</th>
+                                <th>가맹점번호</th>
+                                <th>가맹점명</th>
+                                <th>상품명</th>
+                                <th>상품금액</th>
+                                <th>구매개수</th>
+                                <th>총금액</th>
+                                <th>등록일</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END SalesStore RS Detail Modal-->

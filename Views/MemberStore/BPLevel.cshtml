@@ -1,0 +1,451 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+</style>
+<script>
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+        $(".dtlWorkBPAmt").bind("keyup keydown", function() {
+            inputNumberFormat(this);
+        });
+
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").attr("disabled", false);
+        }
+        else if (@ViewBag.LoginType == "2")
+        {
+            $("#MemberStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#MemberStoreNo").attr("disabled", true);
+        }
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------
+    function fnInit() {
+        $("#groupWorkMemberStoreNo").val("");
+        $("#groupWorkBPLevelGroupNo").val("");
+        $("input[name='groupWorkBPLevelFlag']").attr('checked', false);
+        $("input[name='groupWorkUseState']").attr('checked', false);
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        var strURL = "";
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            if (!$("#MemberStoreNo").val()) {
+                alert("가맹점을 선택해주세요.");
+                return false;
+            }
+            fnCreateDT();
+        });
+
+        //BP등급그룹 등록 버튼 이벤트
+        $("#btnRegBPLevel").on("click", function () {
+            fnInit();
+
+            strURL = "/MemberStore/InsBPLevelGroup";
+
+            $("#spbpLevelGroupInsUpdModal").html("BP등급그룹 등록");
+            $("#divGroupWorkUseState").hide();
+            $("#bpLevelGroupInsUpdModal").modal("show");
+        });
+
+        //BP등급그룹 수정 버튼 이벤트
+        $(document).on("click", ".btnBPLevelGroupWork", function () {
+            fnInit();
+
+            strURL = "/MemberStore/UpdBPLevelGroup";
+
+            $("#divGroupWorkUseState").show();
+
+            $("#spbpLevelGroupInsUpdModal").html("BP등급그룹 수정");
+            $("#groupWorkMemberStoreNo").val($(this).data("memberstoreno"));
+            $("#groupWorkBPLevelGroupNo").val($(this).data("bplevelgroupno"));
+            $("input[name='groupWorkBPLevelFlag']:input[value='" + $(this).data("bplevelflag") + "']").attr("checked", true);
+            $("input[name='groupWorkUseState']:input[value='" + $(this).data("usestate") + "']").attr("checked", true);
+
+            $("#bpLevelGroupInsUpdModal").modal("show");
+        });
+
+        //BP등급그룹 등록/수정 모달 확인 버튼 이벤트
+        $("#btnGroupWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strURL,
+                type: 'POST',
+                data: {
+                    MemberStoreNo: $("#groupWorkMemberStoreNo").val(),
+                    BPLevelGroupNo: $("#groupWorkBPLevelGroupNo").val(),
+                    BPLevelFlag: $("input[name='groupWorkBPLevelFlag']:checked").val(),
+                    UseState: $("input[name='groupWorkUseState']:checked").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spbpLevelGroupInsUpdModal").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#bpLevelGroupInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#bpLevelGroupInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            })
+        });
+
+        //세부사항 클릭 버튼 이벤트
+        $(document).on("click", ".btnBPLevelDtlWork", function () {
+            $("#tblWorkBPLevelDtl tr:not(:first)").remove();
+
+            $("#dtlWorkBPLevelGroupNo").val($(this).data("bplevelgroupno"));
+
+            $.ajax({
+                url: "/MemberStore/DetailBPLevelDtl",
+                type: 'POST',
+                data: {
+                    MemberStoreNo : $(this).data("memberstoreno"),
+                    BPLevelGroupNo: $(this).data("bplevelgroupno")
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData   = result.data;
+                    var jsonLength = jsonData.length;
+
+                    if (jsonLength > 0) {
+                        $.each(jsonData, function(index, value) {
+                            $("#" + index + " .dtlWorkBPLevelName").val(value.bpLevelName);
+                            $("#" + index + " .dtlWorkBPAmt").val(comma(value.bpAmt));
+
+                            if (index < jsonLength - 1) {
+
+                                $("#" + index).after(fnRendertrBPLevelDtl(index));
+                            }
+                        });
+                    }
+
+                    $("#bpLevelDtlInsUpdModal").modal("show");
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                }
+            });
+        });
+
+        //세부사항 등급 추가버튼 이벤트
+        $("#addBPLevelDtl").on("click", function () {
+            var lastIndex = $(".trBPLevelDtl:last").attr("id");
+
+            $("#" + lastIndex).after(fnRendertrBPLevelDtl(lastIndex));
+        });
+
+        //세부사항 등급 삭제버튼 이벤트
+        $(document).on("click", ".dtlWorkDel", function () {
+            fnInit();
+
+            if ($(".dtlWorkDel").length < 2) {
+                return;
+            }
+
+            $(this).closest("tr").remove();
+        });
+
+        //세부사항 확인버튼 이벤트
+        $("#btnDtlWorkConfirm").on("click", function () {
+            var $BPLevelName    = "";
+            var $BPAmt          = "";
+
+            $(".dtlWorkBPLevelName").each(function () {
+                $BPLevelName += $(this).val() + "^";
+            });
+            $(".dtlWorkBPAmt").each(function () {
+                $BPAmt += uncomma($(this).val()) + "^";
+            });
+
+            $.ajax({
+                url: "/MemberStore/UpdBPLevelDtl",
+                type: 'POST',
+                data: {
+                    BPLevelGroupNo: $("#dtlWorkBPLevelGroupNo").val(),
+                    BPLevelName   : $BPLevelName.substr(0, $BPLevelName.length - 1),
+                    BPAmts        : $BPAmt.substr(0, $BPAmt.length -1)
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert("작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#bpLevelDtlInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#bpLevelDtlInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            })
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/MemberStore/GetBPLevelGroupList",
+                "type": "POST",
+                "data": {
+                    MemberStoreNo: $("#MemberStoreNo").val()
+                }
+            },
+            columns: [
+                { data: "bpLevelGroupNo" },
+                { data: null, render: fnRenderFlag },
+                { data: null, render: fnRenderUseState },
+                { data: "regDate" },
+                { data: "updDate" },
+                { data: null, render: fnRenderWork }
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 레벨적용여부 렌더링
+    //------------------------
+    function fnRenderFlag(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.bpLevelFlag == "Y") ? "<span style='color:blue'>적용</span>" : "<span style='color:red'>비적용</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // BP등급그룹 상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>사용</span>" : "<span style='color:red'>미사용</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 작업 렌더링
+    //------------------------
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnBPLevelGroupWork' data-memberstoreno='" + data.memberStoreNo + "' data-bplevelgroupno='" + data.bpLevelGroupNo + "' data-bplevelflag='" + data.bpLevelFlag + "' data-usestate='" + data.useState + "' >수정</button>";
+        strHtml += "    <button class='btn btn-outline-success btnBPLevelDtlWork'   data-memberstoreno='" + data.memberStoreNo + "' data-bplevelgroupno='" + data.bpLevelGroupNo + "'>세부사항</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 세부사항 동적 tr 렌더링
+    //------------------------
+    function fnRendertrBPLevelDtl(lastIndex) {
+        var strHtml = "";
+
+        strHtml += "<tr class='form-row trBPLevelDtl' id='" + (parseInt(lastIndex) + 1) + "'>";
+        strHtml += "    <td class='form-group col-md-4'>";
+        strHtml += "        <label>등급명</label>";
+        strHtml += "        <input type='text' class='form-control dtlWorkBPLevelName'/>";
+        strHtml += "    </td>";
+        strHtml += "    <td class='form-group col-md-4'>";
+        strHtml += "        <label>지급금액</label>";
+        strHtml += "        <input type='text' class='form-control dtlWorkBPAmt' onKeyUp='javascript:inputNumberFormat(this);'/>";
+        strHtml += "    </td>";
+        strHtml += "    <td class='form-group col-md-2'>";
+        strHtml += "        <label></label>";
+        strHtml += "        <input type='btn btn-outline-success button' class='btn btn-primary form-control dtlWorkDel' value='삭제'/>";
+        strHtml += "    </td>";
+        strHtml += "</tr>";
+
+        return strHtml;
+    }
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="MemberStoreNo">
+                        @Html.Raw(ViewBag.MemberStoreDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>BP등급그룹번호</th>
+                    <th>레벨적용여부</th>
+                    <th>활성화여부</th>
+                    <th>등록일</th>
+                    <th>수정일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+</div>
+<!-- END Main Page -->
+
+<!-- START BPLevelGroup INS/UPD Modal -->
+<div class="modal fade" id="bpLevelGroupInsUpdModal" tabindex="-1" role="dialog" aria-labelledby="bpLevelGroupInsUpdModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpLevelGroupInsUpdModal"><span id="spbpLevelGroupInsUpdModal"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="frmWorkBPLevelGroup">
+                    <div class="form-row">
+                        <input type="hidden" id="groupWorkMemberStoreNo" value="" />
+                        <div class="form-group col-md-6">
+                            <label>BP등급그룹번호</label>
+                            <input type="text" class="form-control" id="groupWorkBPLevelGroupNo" value="" readonly />
+                        </div>
+                        <div class="form-group col-md-6"></div>
+                    </div>
+                    <div class="form-row">
+                        <label>레벨적용여부</label> &nbsp;&nbsp;
+                        <label class="radio-inline">
+                            <input type="radio" name="groupWorkBPLevelFlag" value="Y"> 적용 &nbsp;&nbsp;
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="groupWorkBPLevelFlag" value="N"> 미적용 &nbsp;&nbsp;
+                        </label>
+                    </div>
+                    <div class="form-row" div="divGroupWorkUseState">
+                        <label>활성화여부</label> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="radio-inline">
+                            <input type="radio" name="groupWorkUseState" value="1"> 사용 &nbsp;&nbsp;
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="groupWorkUseState" value="2"> 미사용 &nbsp;&nbsp;
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnGroupWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END BPLevelGroup INS/UPD Modal-->
+
+<!-- START BPLevelDtl INS/UPD Modal -->
+<div class="modal fade" id="bpLevelDtlInsUpdModal" tabindex="-1" role="dialog" aria-labelledby="bpLevelDtlInsUpdModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpLevelDtlInsUpdModal">BP등급 세부사항</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="frmWorkBPLevelDtl">
+                    <table id="tblWorkBPLevelDtl">
+                        <input type="hidden" id="dtlWorkBPLevelGroupNo" />
+                        <tr class="form-row trBPLevelDtl" id="0">
+                            <td class="form-group col-md-4">
+                                <label>등급명</label>
+                                <input type="text" class="form-control dtlWorkBPLevelName" />
+                            </td>
+                            <td class="form-group col-md-4">
+                                <label>지급금액</label>
+                                <input type="text" class="form-control dtlWorkBPAmt" />
+                            </td>
+                            <td class="form-group col-md-2">
+                                <label></label>
+                                <input type="button" class="btn btn-primary form-control dtlWorkDel" value="삭제" />
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+                <div>
+                    <input type="button" id="addBPLevelDtl" class="btn btn-primary" value="등급추가"/>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnDtlWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END BPLevelDtl INS/UPD Modal-->

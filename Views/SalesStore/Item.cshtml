@@ -1,0 +1,379 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+    tr{
+        font-size:13px
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+        $("#workItemPrice, #workAddCnt").bind("keyup keydown", function() {
+            inputNumberFormat(this);
+        });
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#SalesStoreNo").attr("disabled", false);
+        }
+        else if (@ViewBag.LoginType == "3")
+        {
+            $("#SalesStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#SalesStoreNo").attr("disabled", true);
+        }
+    });
+    
+    //------------------------
+    // 모달값 초기화
+    //------------------------ 
+    function fnInit() {
+        $("#workItemGroupNo").val("");
+        $("#workItemName").val("");
+        $("#workSalesStoreNo").val("");
+        $("#workItemPrice").val("");
+        $("#workTotalINCnt").val("");
+
+        $("#workTotalOUTCnt").val("");
+        $("#workRemainCnt").val("");
+        $("#workAddCnt").val("");
+        $("input[name='workUseState']").attr('checked', false);
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        var strURL = "";
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            fnCreateDT();
+        });
+
+        //상품 등록 버튼 이벤트
+        $("#btnRegItem").on("click", function () {
+            fnInit();
+
+            $("#spInsUpdModalTitle").html("상품 등록");
+            $("#workSalesStoreNo").attr("disabled", false);
+            $("#workItemGroupNo").attr("disabled", false);
+            $("#divWorkUseState").hide();
+
+            strURL = "/SalesStore/InsItem";
+
+            $("#itemInsUpdModal").modal("show");
+        });
+
+        //상품 수정 버튼 이벤트
+        $(document).on("click", ".btnWork", function () {
+            fnInit();
+
+            var $itemNo = $(this).data("itemno");
+            $("#divWorkUseState").show();
+
+            strURL = "/SalesStore/UpdItem";
+
+            fnDetailItem($itemNo);
+        });
+
+        //상품 단건등록/수정 모달 확인 버튼 클릭 시
+        $("#btnWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strURL,
+                type: 'POST',
+                data: {
+                    ItemNo      : $("#workItemNo").val(),
+                    ItemGroupNo : $("#workItemGroupNo").val(),
+                    ItemName    : $("#workItemName").val(),
+                    SalesStoreNo: $("#workSalesStoreNo").val(),
+                    ItemPrice   : uncomma($("#workItemPrice").val()),
+
+                    TotalINCnt  : uncomma($("#workAddCnt").val()),
+                    UseState    : $("input[name='workUseState']:checked").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spInsUpdModalTitle").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#itemInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#itemInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/SalesStore/GetItemList",
+                "type": "POST",
+                "data": {
+                    "ItemGroupNo"   : $("#ItemGroupNo").val(),
+                    "ItemNo"        : $("#ItemNo").val(),
+                    "ItemName"      : $("#ItemName").val(),
+                    "SalesStoreNo"  : $("#SalesStoreNo").val(),
+                    "SalesStoreName": $("#SalesStoreName").val(),
+                    "UseState"      : $("#UseState").val()
+                }
+            },
+            columns: [
+                { data: "salesStoreNo" },
+                { data: "salesStoreName" },
+                { data: "itemNo" },
+                { data: "itemGroupName" },
+                { data: "itemName" },
+                { data: "itemPrice", render: $.fn.dataTable.render.number( ',', '.', 0, '' )},
+                { data: null, render: fnRenderUseState },
+                { data: "regDate" },
+                { data: "updDate" },
+                { data: null, render: fnRenderWork },
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>해지</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 작업 렌더링
+    //------------------------
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnWork' data-itemno='" + data.itemNo + "'>수정</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------ 
+    // 상품 상세조회
+    //------------------------
+    function fnDetailItem(itemNo) {
+        $.ajax({
+            url: "/SalesStore/DetailItem",
+            type: 'POST',
+            data: {
+                ItemNo: itemNo
+            },
+            dataType: 'json',
+            success: function (result) {
+                var jsonData = result.data;
+
+                if (jsonData.retVal == 0) {
+                    $("#spInsUpdModalTitle").html("상품 수정");
+                    $("#workItemNo").val(jsonData.data.itemNo);
+                    $("#workSalesStoreNo").val(jsonData.data.salesStoreNo).attr("disabled", true);
+                    $("#workItemGroupNo").val(jsonData.data.itemGroupNo).attr("disabled", true);
+                    $("#workItemName").val(jsonData.data.itemName);
+
+                    $("#workItemPrice").val(comma(jsonData.data.itemPrice));
+                    $("#workTotalINCnt").val(comma(jsonData.data.totalINCnt));
+                    $("#workTotalOUTCnt").val(comma(jsonData.data.totalOUTCnt));
+                    $("#workRemainCnt").val(comma(jsonData.data.remainCnt));
+
+                    $("input[name='workUseState']:input[value='" + jsonData.data.useState + "']").attr("checked", true);
+
+                    $("#itemInsUpdModal").modal("show");
+                }
+                else {
+                    alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                }
+            },
+            error: function () {
+                alert("Ajax Exception Error Occured");
+            }
+        });
+    }
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="ItemGroupNo">
+                        @Html.Raw(ViewBag.ItemGroupNameDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <input type="text" id="ItemName" class="form-control" placeholder="상품명">
+                </div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3">
+                    <select class="form-control" id="SalesStoreNo">
+                        @Html.Raw(ViewBag.SalesStoreNameDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseState">
+                        @Html.Raw(ViewBag.UseStateDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>판매처번호</th>
+                    <th>판매처명</th>
+                    <th>상품코드</th>
+                    <th>상품분류</th>
+                    <th>상품명</th>
+                    <th>상품금액</th>
+                    <th>상태</th>
+                    <th>등록일</th>
+                    <th>수정일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+
+    <!-- START Button Area -->
+    <div style="float:left">
+        <button id="btnRegItem" class="btn btn-primary">상품 등록</button>
+    </div>
+    <!-- END Button Area -->
+</div>
+<!-- END Main Page -->
+
+<!-- START Item INS/UPD Modal -->
+<div class="modal fade" id="itemInsUpdModal" tabindex="-1" role="dialog" aria-labelledby="itemInsUpdModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemInsUpdModal"><span id="spInsUpdModalTitle"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-row">
+                        <input type="hidden" id="workItemNo" value="" />
+                        <div class="form-group col-md-6">
+                            <label>판매처</label>
+                            <select class="form-control" id="workSalesStoreNo">
+                                @Html.Raw(ViewBag.SalesStoreNameDDLB)
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>상품분류</label>
+                            <select class="form-control" id="workItemGroupNo">
+                                @Html.Raw(ViewBag.ItemGroupNameDDLB)
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>상품명</label>
+                            <input type="text" class="form-control" id="workItemName" value="" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>상품금액</label>
+                            <input type="text" class="form-control" id="workItemPrice" value="" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>총 입고수량</label>
+                            <input type="text" class="form-control" id="workTotalINCnt" value="" readonly/>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>추가 입고수량</label>
+                            <input type="text" class="form-control" id="workAddCnt" value="" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>판매수량</label>
+                            <input type="text" class="form-control" id="workTotalOUTCnt" value="" readonly />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>잔여수량</label>
+                            <input type="text" class="form-control" id="workRemainCnt" value="" readonly />
+                        </div>
+                    </div>
+                    <div class="form-row" id="divWorkUseState">
+                        <label>상태</label> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="1"> 정상 &nbsp;&nbsp;
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="2"> 해지 &nbsp;&nbsp;
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END Item INS/UPD Modal-->

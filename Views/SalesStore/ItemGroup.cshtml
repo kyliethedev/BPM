@@ -1,0 +1,294 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------
+    function fnInit() {
+        $("#workItemGroupNo").val("");
+        $("#workItemGroupName").val("");
+        $("#workItemGroupDesc").val("");
+        $("input[name='workUseState']").attr('checked', false);
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        var strURL = "";
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            fnCreateDT();
+        });
+
+        //상품분류 등록 버튼 이벤트
+        $("#btnRegItem").on("click", function () {
+            fnInit();
+
+            $("#spInsUpdModalTitle").html("상품분류 등록");
+            $("#divWorkUseState").hide();
+
+            strURL = "/SalesStore/InsItemGroup";
+
+            $("#itemGroupInsUpdModal").modal("show");
+        });
+
+        //상품분류 수정 버튼 이벤트
+        $(document).on("click", ".btnWork", function () {
+            fnInit();
+
+            var $itemGroupNo = $(this).data("itemgroupno");
+            $("#divWorkUseState").show();
+
+            strURL = "/SalesStore/UpdItemGroup";
+
+            fnDetailItemGroup($itemGroupNo);
+        });
+
+        //상품분류 등록/수정 모달 확인 버튼 클릭 시
+        $("#btnWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strURL,
+                type: 'POST',
+                data: {
+                    ItemGroupNo   : $("#workItemGroupNo").val(),
+                    ItemGroupName : $("#workItemGroupName").val(),
+                    ItemGroupDesc : $("#workItemGroupDesc").val(),
+                    UseState      : $("input[name='workUseState']:checked").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spInsUpdModalTitle").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#itemGroupInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#itemGroupInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/SalesStore/GetItemGroupList",
+                "type": "POST",
+                "data": {
+                    "ItemGroupNo"   : $("#ItemGroupNo").val(),
+                    "UseState"      : $("#UseState").val()
+                }
+            },
+            columns: [
+                { data: "itemGroupNo" },
+                { data: "itemGroupName" },
+                { data: null, render: fnRenderUseState },
+                { data: "regDate" },
+                { data: "updDate" },
+                { data: null, render: fnRenderWork },
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>해지</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 작업 렌더링
+    //------------------------
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnWork' data-itemgroupno='" + data.itemGroupNo + "'>수정</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 상품분류 상세조회
+    //------------------------
+    function fnDetailItemGroup(itemGroupNo) {
+        $.ajax({
+            url: "/SalesStore/DetailItemGroup",
+            type: 'POST',
+            data: {
+                ItemGroupNo: itemGroupNo
+            },
+            dataType: 'json',
+            success: function (result) {
+                var jsonData = result.data;
+
+                if (jsonData.retVal == 0) {
+                    $("#spInsUpdModalTitle").html("상품분류 수정");
+
+                    $("#workItemGroupNo").val(jsonData.data.itemGroupNo);
+                    $("#workItemGroupName").val(jsonData.data.itemGroupName);
+                    $("#workItemGroupDesc").val(jsonData.data.itemGroupDesc);
+                    $("input[name='workUseState']:input[value='" + jsonData.data.useState + "']").attr("checked", true);
+
+                    $("#itemGroupInsUpdModal").modal("show");
+                }
+                else {
+                    alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                }
+            },
+            error: function () {
+                alert("Ajax Exception Error Occured");
+            }
+        });
+    }
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="ItemGroupNo">
+                        @Html.Raw(ViewBag.ItemGroupDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseState">
+                        @Html.Raw(ViewBag.UseStateDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>상품분류번호</th>
+                    <th>상품분류명</th>
+                    <th>상태</th>
+                    <th>등록일</th>
+                    <th>수정일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+
+    <!-- START Button Area -->
+    <div style="float:left">
+        <button id="btnRegItem" class="btn btn-primary">상품분류 등록</button>
+    </div>
+    <!-- END Button Area -->
+</div>
+<!-- END Main Page -->
+
+<!-- START ItemGroup INS/UPD Modal -->
+<div class="modal fade" id="itemGroupInsUpdModal" tabindex="-1" role="dialog" aria-labelledby="itemGroupInsUpdModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemGroupInsUpdModal"><span id="spInsUpdModalTitle"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-row">
+                        <input type="hidden" id="workItemGroupNo" value="" />
+                        <div class="form-group col-md-6">
+                            <label>상품분류명</label>
+                            <input type="text" class="form-control" id="workItemGroupName" value="" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>설명</label>
+                            <input type="text" class="form-control" id="workItemGroupDesc" value="" />
+                        </div>
+                    </div>
+                    <div class="form-row" id="divWorkUseState">
+                        <label>상태</label> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="1"> 정상 &nbsp;&nbsp;
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="2"> 해지 &nbsp;&nbsp;
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END Item INS/UPD Modal-->

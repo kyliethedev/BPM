@@ -1,0 +1,251 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+        $("#selSalesContract").multiSelect({
+            selectableHeader: "<div class='custom-header'>판매처 사용안함</div>",
+            selectionHeader : "<div class='custom-header'>판매처 사용</div>"
+        });
+
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").attr("disabled", false);
+        }
+        else if (@ViewBag.LoginType == "2")
+        {
+            $("#MemberStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#MemberStoreNo").attr("disabled", true);
+        }
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------ 
+    function fnInit() {
+        $("#workMemberStoreNo").val("");
+        $("#workMemberStoreName").val("");
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        fnInit();
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            fnCreateDT();
+        });
+
+        //판매처 연계 수정 버튼 이벤트
+        $(document).on("click", ".btnWork", function () {
+            $("#workMemberStoreNo").val($(this).data("memberstoreno"));
+            $("#workMemberStoreName").val($(this).data("memberstorename"));
+
+            $.ajax({
+                url: "/MemberStore/ServicedSalesStoreDDLB",  
+                data: {
+                    MemberStoreNo : $("#workMemberStoreNo").val()
+                }, 
+                method: "POST", 
+                dataType: "json"
+            }).done(function (ServicedSalesStoreDDLB) {
+                $("#selSalesContract").empty().append(ServicedSalesStoreDDLB);
+                $("#selSalesContract").multiSelect("refresh");
+            });
+
+         $("#WorkModal").modal("show");
+        });
+
+        //판매처 연계 수정모달 확인 버튼 이벤트
+        $("#btnWorkConfirm").on("click", function () {
+            var selectedSalesStoreNo = "";
+
+            $("#selSalesContract option:selected").each(function () {
+                selectedSalesStoreNo += this.value + "^";
+            });
+
+            $.ajax({
+                url: "/MemberStore/UpdMemberSalesContract",
+                data: {
+                    MemberStoreNo: $("#workMemberStoreNo").val(),
+                    SalesStoreNo : selectedSalesStoreNo.slice(0, -1)
+                },
+                method: "POST",
+                dataType: "json",
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert("작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#WorkModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#WorkModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/MemberStore/GetMemberSalesContractList",
+                "type": "POST",
+                "data": {
+                    "MemberStoreNo": $("#MemberStoreNo").val(),
+                    "UseState"     : $("#UseState").val()
+                }
+            },
+            columns: [
+                { data: "memberStoreNo" },
+                { data: "memberStoreName" },
+                { data: null, render: fnRenderUseState },
+                { data: null, render: fnRenderWork },
+                { data: "regDate" },
+                { data: "updDate" },
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 가맹점상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>해지</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 작업 렌더링
+    //------------------------
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnWork' data-memberstoreno='" + data.memberStoreNo + "' data-memberstorename='" + data.memberStoreName + "'>수정</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="MemberStoreNo">
+                        @Html.Raw(ViewBag.MemberStoreDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseState">
+                        @Html.Raw(ViewBag.UseStateDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <br />
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>가맹점번호</th>
+                    <th>가맹점명</th>
+                    <th>가맹점상태</th>
+                    <th>판매처계약작업</th>
+                    <th>등록일</th>
+                    <th>수정일</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+</div>
+<!-- END Main Page -->
+
+<!-- START SalesContract Modal -->
+<div class="modal fade" id="WorkModal" tabindex="-1" role="dialog" aria-labelledby="WorkModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="WorkModal">판매처연계작업</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="frmWork">
+                    <div class="form-row">
+                        <input type="hidden" id="workMemberStoreNo" value="" />
+                        <div class="form-group">
+                            <label>가맹점명</label>
+                            <input type="text" class="form-control" id="workMemberStoreName" value="" readonly />
+                        </div>
+                    </div>
+                    <select multiple="multiple" id="selSalesContract" name="selSalesContract">
+                    </select>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END SalesContract Modal-->

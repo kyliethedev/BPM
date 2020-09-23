@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Custom' ">
+    <StartAction>Project</StartAction>
+    <LaunchBrowser></LaunchBrowser>
+    <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\RS\" />
+    <Folder Include="Views\Login\" />
+    <Folder Include="Models\Login\" />
+    <Folder Include="Controllers\Login\" />
+    <Folder Include="Controllers\MemberStore\" />
+    <Folder Include="Controllers\Point\" />
+    <Folder Include="Controllers\SalesStore\" />
+    <Folder Include="Models\SalesStore\" />
+    <Folder Include="wwwroot\lib\multiselect\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Views\Home\Login.cshtml" />
+    <Content Remove="Views\Login\Index.cshtml" />
+    <Content Remove="Views\Home\Privacy.cshtml" />
+    <Content Remove="Views\Point\Index.cshtml" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\css\all.min.css" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\css\v4-shims.min.css" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\css\regular.min.css" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\css\solid.min.css" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\js\regular.min.js" />
+    <Content Remove="wwwroot\lib\fontawesome-free-5.11.2-web\js\fontawesome.min.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Session" Version="2.2.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.0.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="3.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.Design" Version="1.1.6" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Models\Login\User.cs" />
+    <Compile Remove="Models\Login\Login.cs" />
+    <Compile Remove="Models\Login\TmpTable.cs" />
+    <Compile Remove="Data\DBInitializer.cs" />
+  </ItemGroup>
+</Project>

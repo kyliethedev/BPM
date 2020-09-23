@@ -1,0 +1,394 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").attr("disabled", false);
+        }
+        else if (@ViewBag.LoginType == "2")
+        {
+            $("#MemberStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#MemberStoreNo").attr("disabled", true);
+        }
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------
+    function fnInit() {
+        $("#bpWorkApplyNo").val("");
+        $("#bpWorkUserNo").val("");
+        $("#bpWorkTeamName").val("");
+        $("#bpWorkBPLevelName").val("");
+        $("#bpWorkUserName").val("");
+
+        $("#bpWorkDescription").val("");
+        $("#bpWorkAmt").val("");
+        $("#bpWorkImageDir").val("");
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        fnInit();
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            if (!$("#MemberStoreNo").val()) {
+                alert("가맹점을 선택해주세요.");
+                return false;
+            }
+            fnCreateDT();
+        });
+
+        //복지포인트 신청금액 버튼 이벤트
+        $(document).on("click", ".btnBPWork", function () {
+
+            $("#bpWorkApplyNo").val($(this).data("applyno"));
+
+            fnDetailBPApply();
+        });
+
+        //복지포인트 신청 상세내역 모달 확인 버튼 이벤트
+        $("#btnWorkConfirm").on("click", function () {
+            $.ajax({
+                url: "/Point/UpdBPApply",
+                type: 'POST',
+                data: {
+                    ApplyNo   : $("#bpWorkApplyNo").val(),
+                    StateCode : $("#bpWorkStateCode").val(),
+                    Memo      : $("#bpWorkMemo").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert("작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#bpWorkModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#bpWorkModal').modal("hide");
+                    location.reload();
+                }
+            })
+        });
+
+        //일괄 승인/완료 버튼 이벤트
+        $("#btnUpdConfirm, #btnUpdDone").on("click", function () {
+            var selectedApplyNo = "";
+            var toStateCode     = $(this).data("type");
+
+            $("input[name='cbBulkWork']:checked").each(function() {
+
+                selectedApplyNo += $(this).val() + "^";
+            });
+
+            $.ajax({
+                url: "/Point/UpdBPApplyBulk",
+                data: {
+                    ApplyNos  : selectedApplyNo.slice(0, -1),
+                    StateCode : toStateCode
+                },
+                method: "POST",
+                dataType: "json",
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert("작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#WorkModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#WorkModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/Point/GetBPApplyList",
+                "type": "POST",
+                "data": {
+                    "MemberStoreNo": $("#MemberStoreNo").val(),
+                    "StateCode"    : $("#StateCode").val()
+                }
+            },
+            columns: [
+                { data: null, render: fnRenderCheckBox },
+                { data: "rowNum" },
+                { data: "userNo" },
+                { data: "userName" },
+                { data: "description" },
+                { data: "useAmt", render: $.fn.dataTable.render.number( ',', '.', 0, '' ) },
+                { data: null, render: fnRenderApplyAmt },
+                { data: null, render: fnRenderStateCode },
+                { data: "regDate" },
+                { data: "updDate" }
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 체크박스 렌더링
+    //------------------------
+    function fnRenderCheckBox(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div class='custom-control custom-checkbox'>";
+        strHtml += "    <input class='custom-control-input' id='cbBulkWork" + data.applyNo + "' name='cbBulkWork' type='checkbox' value='" + data.applyNo + "' />";
+        strHtml += "    <label class='custom-control-label' for='cbBulkWork" + data.applyNo + "'></label>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 신청금액 렌더링
+    //------------------------
+    function fnRenderApplyAmt(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnBPWork' data-applyno='" + data.applyNo + "'>" + comma(data.applyAmt) + "</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 상태 렌더링
+    //------------------------
+    function fnRenderStateCode(data, type, row) {
+        var strHtml = "";
+
+        switch (data.stateCode) {
+            case 1:
+                strHtml += "요청";
+                break;
+            case 2:
+                strHtml += "<span style='color:green'>승인</span>";
+                break;
+            case 3:
+                strHtml += "<span style='color:red'>거절</span>";
+                break;
+            case 4:
+                strHtml += "<span style='color:blue'>완료</span>";
+                break;
+        }
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 복지포인트 신청내역 상세조회
+    //------------------------
+    function fnDetailBPApply() {
+        $.ajax({
+            url: "/Point/DetailBPApply",
+            type: 'POST',
+            data: {
+                MemberStoreNo: $("#MemberStoreNo").val(),
+                ApplyNo      : $("#bpWorkApplyNo").val()
+            },
+            dataType: 'json',
+            success: function (result) {
+                var jsonData   = result.data;
+
+                if (jsonData.retVal == 0) {
+                    $("#bpWorkUserNo").val(jsonData.data.userNo);
+                    $("#bpWorkTeamName").val(jsonData.data.objUserModel.teamName);
+                    $("#bpWorkBPLevelName").val(jsonData.data.objUserModel.bpLevelName);
+                    $("#bpWorkUserName").val(jsonData.data.userName);
+                    $("#bpWorkDescription").val(jsonData.data.description);
+
+                    $("#bpWorkAmt").val(comma(jsonData.data.useAmt) + " / " + comma(jsonData.data.applyAmt));
+                    $("#bpWorkImageDir").val(jsonData.data.imageDir);
+                    $("#bpWorkStateCode option[value='" + jsonData.data.stateCode + "']").prop("selected", true);
+                    $("#bpWorkMemo").val(jsonData.data.memo);
+
+                    $("#bpWorkModal").modal("show");
+                }
+                else {
+                    alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                }
+            },
+            error: function () {
+                alert("Ajax Exception Error Occured");
+            }
+        });
+    }
+
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="MemberStoreNo">
+                        @Html.Raw(ViewBag.MemberStoreDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="StateCode">
+                        @Html.Raw(ViewBag.StateCodeDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+                <div class="col-3"></div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>선택</th>
+                    <th>순서</th>
+                    <th>직원번호</th>
+                    <th>직원명</th>
+                    <th>설명</th>
+                    <th>총금액</th>
+                    <th>신청금액</th>
+                    <th>상태</th>
+                    <th>등록일</th>
+                    <th>수정일</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+
+    <!-- START Button Area -->
+    <div style="float:left">
+        <button id="btnUpdConfirm" class="btn btn-primary" data-type="2">일괄 승인</button>
+        <button id="btnUpdDone" class="btn btn-primary" data-type="4">일괄 완료</button>
+    </div>
+    <!-- END Button Area -->
+</div>
+<!-- END Main Page -->
+
+<!-- START BP Work Modal -->
+<div class="modal fade" id="bpWorkModal" tabindex="-1" role="dialog" aria-labelledby="bpWorkModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpWorkModal">복지포인트 신청 상세내역</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="bpWorkApplyNo"/>
+                    <div class="form-group col-md-6">
+                        <label>직원번호</label>
+                        <input type="text" class="form-control" id="bpWorkUserNo" readonly/>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>소속팀</label>
+                        <input type="text" class="form-control" id="bpWorkTeamName" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>직급</label>
+                        <input type="text" class="form-control" id="bpWorkBPLevelName" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>직원명</label>
+                        <input type="text" class="form-control" id="bpWorkUserName" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>카테고리/사용처 설명</label>
+                        <input type="text" class="form-control" id="bpWorkDescription" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>총 금액/신청 금액</label>
+                        <input type="text" class="form-control" id="bpWorkAmt" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>영수증이미지</label>
+                        <input type="text" class="form-control" id="bpWorkImageDir" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>상태</label>
+                        <select class="form-control" id="bpWorkStateCode">
+                            @Html.Raw(ViewBag.StateCodeDDLB)
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>사유</label>
+                        <input type="text" class="form-control" id="bpWorkMemo" value="" />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END BP Work Modal-->

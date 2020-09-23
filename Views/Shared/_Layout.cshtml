@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BPM</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" type="text/css" href="~/lib/DataTables-1.10.20/datatables.min.css" />
+    <link rel="stylesheet" type="text/css" href="~/lib/multiselect/multi-select.css" />
+    <link rel="stylesheet" type="text/css" href="~/lib/datepicker/datepicker.css" />
+</head>
+<body>
+    <header style="margin-top:10px">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom mb-3">
+            <div class="container">
+                <a class="navbar-brand" style="color:#9ac93c;font-size:30px" asp-area="" asp-controller="Login" asp-action="Dashboard">BPM</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
+                    <ul class="navbar-nav flex-grow-1 nav-pills">
+                        <li class="nav-item dropdown" style="padding-right:2%">
+                            <a class="nav-link text-dark dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="font-size:20px">BP</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="Point" asp-action="User">직원관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="Point" asp-action="BPApply">BP사용신청관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="Point" asp-action="ItemApply">중고상품관리</a>
+                            </div>
+                        </li>
+                        <li class="nav-item dropdown" style="padding-right:2%">
+                            <a class="nav-link text-dark dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="font-size:20px">가맹점</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="MemberStore" asp-action="MemberStore">가맹점관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="MemberStore" asp-action="BPLevel">BP등급관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="MemberStore" asp-action="SalesContract">판매처계약관리</a>
+                            </div>
+                        </li>
+                        <li class="nav-item dropdown" style="padding-right:2%">
+                            <a class="nav-link text-dark dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="font-size:20px">판매처</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="SalesStore" asp-action="SalesStore">판매처관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="SalesStore" asp-action="ItemGroup">상품분류관리</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="SalesStore" asp-action="Item">상품관리</a>
+                            </div>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link text-dark dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="font-size:20px">정산</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="RS" asp-action="DirectSettle">직접결제정산</a>
+                                <a class="dropdown-item" onMouseover="this.style.background='#9ac93c';" onMouseout="this.style.background=''" asp-area="" asp-controller="RS" asp-action="BPApplySettle">판매처정산</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <a class="navbar-brand" style="color:#9ac93c;font-size:30px" asp-area="" asp-controller="Login" asp-action="Logout">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container" style="color:#9ac93c">
+            &copy; 2019 - BPM
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="~/lib/DataTables-1.10.20/datatables.min.js"></script>
+    <script type="text/javascript" src="~/lib/multiselect/jquery.multi-select.js"></script>
+    <script type="text/javascript" src="~/lib/datepicker/moment.min.js"></script>
+    <script type="text/javascript" src="~/lib/datepicker/datepicker.all.min.js"></script>
+    <script type="text/javascript" src="~/lib/datepicker/datepicker.en.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

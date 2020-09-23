@@ -1,0 +1,767 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding: 0.5%
+    }
+    tr{
+        font-size:15px
+    }
+</style>
+<script>
+
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+        $("#bpWorkBPAmt").bind("keyup keydown", function () {
+            inputNumberFormat(this);
+        });
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").attr("disabled", false);
+        }
+        else if (@ViewBag.LoginType == "2")
+        {
+            $("#MemberStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#MemberStoreNo").attr("disabled", true);
+        }
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------
+    function fnInit() {
+        $("#userDtlUserNo").val("");
+        $("#userDtlTeamName").val("");
+        $("#userDtlBPLevelNo").val("");
+        $("#userDtlUserName").val("");
+        $("#userDtlEmpYMD").val("");
+
+        $("#userDtlBankCode").val("");
+        $("#userDtlAccountNo").val("");
+        $("#userDtlAccountHolder").val("");
+        $("#userDtlBPAmt").val("");
+        $("#userDtlTotalOUTAmt").val("");
+
+        $("#userDtlRemainAmt").val("");
+        $("input[name='workUseState']").attr('checked', false);
+        $("#userDtlUserID").val("");
+        $("#userDtlBPLevelGroupNo").val("");
+        $("#bpWorkUserNo").val("");
+
+        $("#bpWorkUserName").val("");
+        $("#bpWorkBPAmt").val("");
+        $("#bpWorkDescription").val("");
+        $("#bpWorkMemberStoreNo").val("");
+    }
+
+    //------------------------
+    // 직원 등록 시 컬럼 Disable
+    //------------------------
+    function fnReadOnlyDisable() {
+        $("#divUserDtlTotalOUTAmt").hide();
+        $("#divUserDtlRemainAmt").hide();
+        $("#divUserDtlUseState").hide();
+    }
+
+    //------------------------
+    // 직원 수정 시 컬럼 Able
+    //------------------------
+    function fnReadOnlyAble() {
+        $("#divUserDtlTotalOUTAmt").show();
+        $("#divUserDtlRemainAmt").show();
+        $("#divUserDtlUseState").show();
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        var strUserDtlURL = "";
+        var strBPWorkURL = "";
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            if (!$("#MemberStoreNo").val()) {
+                alert("가맹점을 선택해주세요.");
+                return false;
+            }
+
+            fnCreateDT();
+        });
+
+        //복지포인트 작업 버튼 이벤트
+        $(document).on("click", ".btnBPWork", function () {
+            fnInit();
+
+            var $type = $(this).data("type");
+
+            if ($type == "add") {
+                $("#spBPWorkModalTitle").html("포인트 지급");
+                strBPWorkURL = "/Point/AddUserBP";
+            }
+            else {
+                $("#spBPWorkModalTitle").html("포인트 차감");
+                strBPWorkURL = "/Point/MinusUserBP";
+            }
+
+            $("#bpWorkUserNo").val($(this).data("userno"));
+            $("#bpWorkUserName").val($(this).data("username"));
+
+            $("#bpWorkModal").modal("show");
+        });
+
+        //복지포인트 작업 모달 확인 클릭 이벤트
+        $("#bpWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strBPWorkURL,
+                type: 'POST',
+                data: {
+                    MemberStoreNo: $("#MemberStoreNo").val(),
+                    UserNo       : $("#bpWorkUserNo").val(),
+                    WorkBPAmt    : uncomma($("#bpWorkBPAmt").val()),
+                    Description  : $("#bpWorkDescription").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spBPWorkModalTitle").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#bpWorkModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#bpWorkModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+
+        //직원 등록 버튼 이벤트
+        $("#btnRegUser").on("click", function () {
+            fnInit();
+            fnReadOnlyDisable();
+
+            $("#spWorkModalTitle").html("직원 등록");
+
+            strUserDtlURL = "/Point/InsUser";
+
+            $("#userDetailModal").modal("show");
+        });
+
+        //슈퍼유저인 경우 가맹점 변경시 DDLB 변경
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").on("change", function () {
+                $.ajax({
+                    url: "/Point/GetChangedTeamNameDDLB",
+                    data: {
+                        MemberStoreNo: $("#MemberStoreNo").val()
+                    },
+                    method: "POST",
+                    dataType: "json"
+                }).done(function (TeamNameDDLB) {
+                    $("#TeamName").html(TeamNameDDLB);
+                });
+
+                $.ajax({
+                    url: "/Point/GetChangedBPLevelDDLB",
+                    data: {
+                        MemberStoreNo: $("#MemberStoreNo").val()
+                    },
+                    method: "POST",
+                    dataType: "json"
+                }).done(function (BPLevelDDLB) {
+                    $("#BPLevelNo").html(BPLevelDDLB);
+                    $("#userDtlBPLevelNo").html(BPLevelDDLB);
+                });
+            });
+        }
+
+        //직원 등록 시 직급 별 지급포인트 세팅
+        $("#userDtlBPLevelNo").on("change", function () {
+            $.ajax({
+                url: "/Point/GetBPAmtByBPLevelNo",
+                type: 'POST',
+                data: {
+                    MemberStoreNo : $("#MemberStoreNo").val(),
+                    BPLevelGroupNo: $("#userDtlBPLevelGroupNo").val(),
+                    BPLevelNo     : $("#userDtlBPLevelNo").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        $("#userDtlBPAmt").val(comma(jsonData.data.objUserBPModel.bpAmt));
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                }
+            });
+        });
+
+        //직원 수정 버튼 이벤트
+        $(document).on("click", ".btnWork", function () {
+            fnInit();
+            fnReadOnlyAble();
+
+            var $userNo = $(this).data("userno");
+            var $memberStoreNo = $(this).data("memberstoreno");
+
+            strUserDtlURL = "/Point/UpdUser";
+
+            fnDetailUser($userNo, $memberStoreNo);
+        });
+
+        //직원 등록/수정 모달 확인 버튼 클릭 시
+        $("#btnWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strUserDtlURL,
+                type: 'POST',
+                data: {
+                    UserNo: $("#userDtlUserNo").val(),
+                    TeamName: $("#userDtlTeamName").val(),
+                    BPLevelNo: $("#userDtlBPLevelNo").val(),
+                    UserName: $("#userDtlUserName").val(),
+                    EmpYMD: $("#userDtlEmpYMD").val(),
+
+                    BankCode: $("#userDtlBankCode").val(),
+                    AccountNo: $("#userDtlAccountNo").val(),
+                    AccountHolder: $("#userDtlAccountHolder").val(),
+                    MemberStoreNo: $("#MemberStoreNo").val(),
+                    UseState: $("input[name='workUseState']:checked").val(),
+
+                    UserID: $("#userDtlUserID").val(),
+                    BPLevelGroupNo: $("#userDtlBPLevelGroupNo").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spWorkModalTitle").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#itemInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#itemInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            });
+        });
+
+        //복지포인트 사용내역 버튼 이벤트
+        $(document).on("click", ".btnBPOutDtl", function () {
+            $('#tblBPUseList').dataTable({
+                ajax: {
+                    "url": "/Point/DetailBPUse",
+                    "type": "POST",
+                    "data": {
+                        "MemberStoreNo" : $("#MemberStoreNo").val(),
+                        "UserNo"        : $(this).data("userno")
+                    }
+                },
+                columns: [
+                    { data: "purchaseNo" },
+                    { data: "itemNo" },
+                    { data: "itemPrice", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "totalAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "description" },
+                    { data: "location" },
+                    { data: "ymd" },
+                    { data: "cymd" }
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false,
+                lengthChange: false
+            });
+
+            $("#spBPUseDtlModalTitle").html("복지포인트 사용내역");
+            $("#bpUseDtlModal").modal("show");
+        });
+
+        //복지포인트 지급내역 버튼 이벤트
+        $(document).on("click", ".btnBPProvideDtl", function () {
+            $('#tblBPProvideList').dataTable({
+                ajax: {
+                    "url": "/Point/DetailBPProvide",
+                    "type": "POST",
+                    "data": {
+                        "MemberStoreNo" : $("#MemberStoreNo").val(),
+                        "UserNo"        : $(this).data("userno")
+                    }
+                },
+                columns: [
+                    { data: "bpNo" },
+                    { data: "bpAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: "remainAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                    { data: null, render: fnRenderProvideUseState },
+                    { data: "description" },
+                    { data: "adminID" },
+                    { data: "regDate" }
+                ],
+                destroy: true,
+                ordering: false,
+                searching: false,
+                serverSide: false,
+                lengthChange: false
+            });
+
+            $("#bpProvideDtlModal").modal("show");
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/Point/GetUserList",
+                "type": "POST",
+                "data": {
+                    "MemberStoreNo": $("#MemberStoreNo").val(),
+                    "TeamName"     : $("#TeamName").val(),
+                    "BPLevelNo"    : $("#BPLevelNo").val(),
+                    "UserName"     : $("#UserName").val(),
+                    "UseState"     : $("#UseState").val()
+                }
+            },
+            columns: [
+                { data: "userNo" },
+                { data: "teamName" },
+                { data: "bpLevelName" },
+                { data: "userName" },
+                { data: null, render: fnRenderUseState },
+                { data: null, render: fnRenderTotalInAmtDtl },
+                { data: null, render: fnRenderUsedBPDtl },
+                { data: "objUserBPModel.remainAmt", render: $.fn.dataTable.render.number(',', '.', 0, '') },
+                { data: "empYMD" },
+                { data: null, render: fnRenderBPWork },
+                { data: null, render: fnRenderWork }
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 직원상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>해지</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 복지포인트 지급내역 상태 렌더링
+    //------------------------
+    function fnRenderProvideUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>취소</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 총포인트 내역 렌더링
+    //------------------------
+    function fnRenderTotalInAmtDtl(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnBPProvideDtl' data-userno='" + data.userNo + "''>" + comma(data.objUserBPModel.totalINAmt) + "</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 사용포인트 내역 렌더링
+    //------------------------
+    function fnRenderUsedBPDtl(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnBPOutDtl' data-userno='" + data.userNo + "''>" + comma(data.objUserBPModel.totalOUTAmt) + "</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 복지포인트 작업 렌더링
+    //------------------------
+    function fnRenderBPWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnBPWork' data-userno='" + data.userNo + "' data-username='" + data.userName + "' data-type='add'> + </button>";
+        strHtml += "    <button class='btn btn-outline-success btnBPWork' data-userno='" + data.userNo + "' data-username='" + data.userName + "' data-type='minus'> - </button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 직원수정 작업 렌더링
+    //------------------------
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnWork' data-userno='" + data.userNo + "' data-memberstoreno='" + data.memberStoreNo + "'> 수정 </button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 직원 상세조회
+    //------------------------
+    function fnDetailUser(userNo, memberStoreNo) {
+        $.ajax({
+            url: "/Point/DetailUser",
+            type: 'POST',
+            data: {
+                UserNo: userNo,
+                MemberStoreNo: memberStoreNo
+            },
+            dataType: 'json',
+            success: function (result) {
+                var jsonData = result.data;
+
+                if (jsonData.retVal == 0) {
+                    $("#spWorkModalTitle").html("직원 수정");
+
+                    $("#userDtlUserNo").val(jsonData.data.userNo);
+                    $("#userDtlTeamName").val(jsonData.data.teamName);
+                    $("#userDtlBPLevelNo").val(jsonData.data.bpLevelNo);
+                    $("#userDtlUserName").val(jsonData.data.userName);
+                    $("#userDtlEmpYMD").val(jsonData.data.empYMD);
+
+                    $("#userDtlBankCode").val(jsonData.data.objUserAccountModel.bankCode);
+                    $("#userDtlAccountNo").val(jsonData.data.objUserAccountModel.accountNo);
+                    $("#userDtlAccountHolder").val(jsonData.data.objUserAccountModel.accountHolder);
+                    $("#userDtlBPAmt").val(comma(jsonData.data.objUserBPModel.bpAmt));
+                    $("#userDtlTotalOUTAmt").val(comma(jsonData.data.objUserBPModel.totalOUTAmt));
+
+                    $("#userDtlRemainAmt").val(comma(jsonData.data.objUserBPModel.remainAmt));
+                    $("#userDtlUserID").val(jsonData.data.userID);
+                    $("input[name='workUseState']:input[value='" + jsonData.data.useState + "']").attr("checked", true);
+                    $("#userDtlBPLevelGroupNo").val(jsonData.data.bpLevelGroupNo);
+
+                    $("#userDetailModal").modal("show");
+                }
+                else {
+                    alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                }
+            },
+            error: function () {
+                alert("Ajax Exception Error Occured");
+            }
+        });
+    }
+
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="MemberStoreNo">
+                        @Html.Raw(ViewBag.MemberStoreDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="TeamName">
+                        @Html.Raw(ViewBag.TeamNameDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="BPLevelNo">
+                        @Html.Raw(ViewBag.BPLevelDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3">
+                    <input type="text" id="UserName" class="form-control" placeholder="직원명">
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseState">
+                        @Html.Raw(ViewBag.UseStateDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>직원번호</th>
+                    <th>소속팀</th>
+                    <th>직급</th>
+                    <th>직원명</th>
+                    <th>상태</th>
+                    <th>총포인트</th>
+                    <th>사용포인트</th>
+                    <th>잔여포인트</th>
+                    <th>입사일</th>
+                    <th>복지포인트 작업</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+
+    <!-- START Register User Area -->
+    <div style="float:left">
+        <button id="btnRegUser" class="btn btn-primary">직원 등록</button>
+    </div>
+    <!-- END Register User Area -->
+</div>
+<!-- END Main Page -->
+
+<!-- START User INS/UPD Modal-->
+<div class="modal fade" id="userDetailModal" tabindex="-1" role="dialog" aria-labelledby="userDetailModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userDetailModal"><span id="spWorkModalTitle"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="userDtlBPLevelGroupNo" value="" />
+                    <input type="hidden" id="userDtlUserNo" value="" />
+                    <div class="form-group col-md-6">
+                        <label>소속팀</label>
+                        <input type="text" class="form-control" id="userDtlTeamName" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>직급</label>
+                        <select class="form-control" id="userDtlBPLevelNo">
+                            @Html.Raw(ViewBag.BPLevelDDLB)
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>직원명</label>
+                        <input type="text" class="form-control" id="userDtlUserName" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>이메일</label>
+                        <input type="text" class="form-control" id="userDtlUserID" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>입사일</label>
+                        <input type="text" class="form-control" id="userDtlEmpYMD" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>은행번호</label>
+                        <input type="text" class="form-control" id="userDtlBankCode" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>계좌번호</label>
+                        <input type="text" class="form-control" id="userDtlAccountNo" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>계좌주</label>
+                        <input type="text" class="form-control" id="userDtlAccountHolder" value="" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>지급 예정 포인트</label>
+                        <input type="text" class="form-control" id="userDtlBPAmt" value="" readonly />
+                    </div>
+                    <div class="form-group col-md-6" id="divUserDtlTotalOUTAmt">
+                        <label>사용 포인트</label>
+                        <input type="text" class="form-control" id="userDtlTotalOUTAmt" value="" readonly />
+                    </div>
+                    <div class="form-group col-md-6" id="divUserDtlRemainAmt">
+                        <label>잔여 포인트</label>
+                        <input type="text" class="form-control" id="userDtlRemainAmt" value="" readonly />
+                    </div>
+                    <div class="form-row" id="divUserDtlUseState">
+                        <label>상태</label> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="1"> 정상 &nbsp;&nbsp;
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="workUseState" value="2"> 해지 &nbsp;&nbsp;
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END User INS/UPD Modal-->
+
+<!-- START BP Work Modal -->
+<div class="modal fade" id="bpWorkModal" tabindex="-1" role="dialog" aria-labelledby="bpWorkModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpWorkModal"><span id="spBPWorkModalTitle"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="bpWorkMemberStoreNo" value="" />
+                    <div class="form-group col-md-6">
+                        <label>직원번호</label>
+                        <input type="text" class="form-control" id="bpWorkUserNo" value="" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>직원명</label>
+                        <input type="text" class="form-control" id="bpWorkUserName" value="" readonly />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>금액</label>
+                        <input type="text" class="form-control" id="bpWorkBPAmt" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>사유</label>
+                        <input type="text" class="form-control" id="bpWorkDescription" />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="bpWorkConfirm">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END BP Work Modal-->
+
+<!-- START BP Use Dtl Modal -->
+<div class="modal fade" id="bpUseDtlModal" tabindex="-1" role="dialog" aria-labelledby="bpUseDtlModal" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpUseDtlModal"><span id="spBPUseDtlModalTitle"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <table class="table" id="tblBPUseList">
+                        <thead>
+                            <tr>
+                                <th>구매번호</th>
+                                <th>아이템번호</th>
+                                <th>금액</th>
+                                <th>총 금액</th>
+                                <th>설명</th>
+                                <th>사용위치</th>
+                                <th>결제일</th>
+                                <th>취소일</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">확인</button>
+            </div>
+        </div>
+    </div>
+</div> 
+<!-- END BP Use Dtl Modal-->
+
+<!-- START BP Provide Dtl Modal -->
+<div class="modal fade" id="bpProvideDtlModal" tabindex="-1" role="dialog" aria-labelledby="bpProvideDtlModal" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bpProvideDtlModal">복지포인트 지급내역</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <table class="table" id="tblBPProvideList">
+                        <thead>
+                            <tr>
+                                <th>BP번호</th>
+                                <th>지급BP</th>
+                                <th>잔여BP</th>
+                                <th>설명</th>
+                                <th>상태</th>
+                                <th>관리자아이디</th>
+                                <th>등록일</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END BP Provide Dtl Modal-->

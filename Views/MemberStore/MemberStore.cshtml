@@ -1,0 +1,424 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<style type="text/css">
+    .col-3 {
+        padding:0.5%
+    }
+</style>
+<script>
+    //------------------------
+    // Ready 함수
+    //------------------------
+    $(document).ready(function () {
+
+        if (@ViewBag.LoginType == "1")
+        {
+            $("#MemberStoreNo").attr("disabled", false);
+            $("#divRegMemberStore").show();
+        }
+        else if (@ViewBag.LoginType == "2")
+        {
+            $("#MemberStoreNo").val(@ViewBag.LoginStoreNo);
+            $("#MemberStoreNo").attr("disabled", true);
+            $("#divRegMemberStore").hide();
+        }
+    });
+
+    //------------------------
+    // 모달값 초기화
+    //------------------------ 
+    function fnInit() {
+        $("#workmemberStoreNo").val("");
+        $("#workmemberStoreName").val("");
+        $("#workceoName").val("");
+        $("#worklicenseNo").val("");
+
+        $("input[name='workUseType']").attr('checked', false);
+        $("input[name='workProvideType']").attr('checked', false);
+        $("input[name='workProvideCycle']").attr('checked', false);
+        $("input[name='workExpireCycle']").attr('checked', false);
+        $("input[name='workUseState']").attr('checked', false);
+    }
+
+    //------------------------
+    // Event Function
+    //------------------------
+    $(function () {
+        var strURL = "";
+
+        //엔터 버튼 이벤트
+        $(document).keydown(function(e) {
+            if (e.keyCode == 13) {
+                fnCreateDT();
+            }
+        });
+
+        //리스트 조회 버튼 이벤트
+        $("#btnSearch").on("click", function () {
+            fnCreateDT();
+        });
+
+        //가맹점 등록 버튼 이벤트
+        $("#btnRegMemberStore").on("click", function () {
+            fnInit();
+
+            $("#spInsUpdModalTitle").html("가맹점 등록");
+            $("#divWorkUseState").hide();
+
+            strURL = "/MemberStore/InsMemberStore";
+
+            $("#memberStoreInsUpdModal").modal("show");
+        });
+
+        //가맹점 수정 버튼 이벤트
+        $(document).on("click", ".btnMemberStoreWork", function () {
+            fnInit();
+
+            var $memberStoreNo = $(this).data("memberstoreno");
+            $("#divWorkUseState").show();
+
+            strURL = "/MemberStore/UpdMemberStore";
+
+            fnDetailMemberStore($memberStoreNo);
+        });
+
+        //등록/수정 모달 확인 버튼 이벤트
+        $("#btnWorkConfirm").on("click", function () {
+            $.ajax({
+                url: strURL,
+                type: 'POST',
+                data: {
+                    MemberStoreNo   : $("#workmemberStoreNo").val(),
+                    MemberStoreName : $("#workmemberStoreName").val(),
+                    CEOName         : $("#workceoName").val(),
+                    LicenseNo       : $("#worklicenseNo").val(),
+
+                    UseType         : $("input[name='workUseType']:checked").val(),
+                    ProvideType     : $("input[name='workProvideType']:checked").val(),
+                    ProvideCycle    : $("input[name='workProvideCycle']:checked").val(),
+                    ExpireCycle     : $("input[name='workExpireCycle']:checked").val(),
+                    UseState        : $("input[name='workUseState']:checked").val()
+                },
+                dataType: 'json',
+                success: function (result) {
+                    var jsonData = result.data;
+
+                    if (jsonData.retVal == 0) {
+                        alert($("#spInsUpdModalTitle").html() + " 작업 성공");
+                    }
+                    else {
+                        alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                    }
+                    $('#memberStoreInsUpdModal').modal("hide");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ajax Exception Error Occured");
+                    $('#memberStoreInsUpdModal').modal("hide");
+                    location.reload();
+                }
+            })
+        });
+    });
+
+    //------------------------
+    // 조회테이블 생성
+    //------------------------
+    function fnCreateDT() {
+        $('#tblList').dataTable({
+            ajax: {
+                "url": "/MemberStore/GetMemberStoreList",
+                "type": "POST",
+                "data": {
+                    "MemberStoreNo"   : $("#MemberStoreNo").val(),
+                    "UseType"         : $("#UseType").val(),
+                    "ProvideType"     : $("#ProvideType").val(),
+                    "UseState"        : $("#UseState").val()
+                }
+            },
+            columns: [
+                { data: "memberStoreNo" },
+                { data: "memberStoreName" },
+                { data: "ceoName"},
+                { data: null, render: fnRenderUseType },
+                { data: null, render: fnRenderProvideType },
+                { data: null, render: fnRenderUseState },
+                { data: "regDate" },
+                { data: null, render: fnRenderWork }
+            ],
+            destroy: true,
+            ordering: false,
+            searching: false,
+            serverSide: false
+        });
+    }
+
+    //------------------------
+    // 사용방식 렌더링
+    //------------------------ 
+    function fnRenderUseType(data, type, row) {
+        var strHtml = "";
+
+        if (data.useType == "1") {
+            strHtml += "직접결제";
+        }
+        else if (data.useType == "2") {
+            strHtml += "간접결제";
+        }
+        else {
+            strHtml += "복합결제";
+        }
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 지급방식 렌더링
+    //------------------------ 
+    function fnRenderProvideType(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.provideType == "1") ? "일괄" : "분할";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 가맹점상태 렌더링
+    //------------------------
+    function fnRenderUseState(data, type, row) {
+        var strHtml = "";
+
+        strHtml += (data.useState == "1") ? "<span style='color:blue'>정상</span>" : "<span style='color:red'>해지</span>";
+
+        return strHtml;
+    }
+
+    //------------------------
+    // 작업 렌더링
+    //------------------------ 
+    function fnRenderWork(data, type, row) {
+        var strHtml = "";
+
+        strHtml += "<div>";
+        strHtml += "    <button class='btn btn-outline-success btnMemberStoreWork' data-memberstoreno='" + data.memberStoreNo + "'>수정</button>";
+        strHtml += "</div>";
+
+        return strHtml;
+    }
+
+    //------------------------ 
+    // 가맹점 상세조회
+    //------------------------
+    function fnDetailMemberStore(memberStoreNo) {
+        $.ajax({
+            url: "/MemberStore/DetailMemberStore",
+            type: 'POST',
+            data: {
+                MemberStoreNo: memberStoreNo
+            },
+            dataType: 'json',
+            success: function (result) {
+                var jsonData = result.data;
+
+                if (jsonData.retVal == 0) {
+                    $("#spInsUpdModalTitle").html("가맹점 수정");
+                    $("#workmemberStoreNo").val(jsonData.data.memberStoreNo);
+                    $("#workmemberStoreName").val(jsonData.data.memberStoreName);
+                    $("#workceoName").val(jsonData.data.ceoName);
+                    $("#worklicenseNo").val(jsonData.data.licenseNo);
+
+                    $("input[name='workUseType']:input[value='" + jsonData.data.useType + "']").attr("checked", true);
+                    $("input[name='workProvideType']:input[value='" + jsonData.data.provideType + "']").attr("checked", true);
+                    $("input[name='workProvideCycle']:input[value='" + jsonData.data.provideCycle + "']").attr("checked", true);
+                    $("input[name='workExpireCycle']:input[value='" + jsonData.data.expireCycle + "']").attr("checked", true);
+                    $("input[name='workUseState']:input[value='" + jsonData.data.useState + "']").attr("checked", true);
+
+                    $("#memberStoreInsUpdModal").modal("show");
+                }
+                else {
+                    alert("[" + jsonData.retVal + "]" + jsonData.errMsg);
+                }
+            },
+            error: function () {
+                alert("Ajax Exception Error Occured");
+            }
+        });
+    }
+</script>
+
+<!-- START Main Page -->
+<div class="text-center">
+    <div>
+        <h4 style="float:left">@ViewBag.ThisPage</h4>
+    </div>
+
+    <!-- START Search Area -->
+    <div>
+        <br /><br />
+        <form id="frmSearch" style="margin-left:3%">
+            <div class="row">
+                <div class="col-3">
+                    <select class="form-control" id="MemberStoreNo">
+                        @Html.Raw(ViewBag.MemberStoreDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseType">
+                        @Html.Raw(ViewBag.UseTypeDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <br />
+                <div class="col-3">
+                    <select class="form-control" id="ProvideType">
+                        @Html.Raw(ViewBag.ProvideTypeDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+                <div class="col-3">
+                    <select class="form-control" id="UseState">
+                        @Html.Raw(ViewBag.UseStateDDLB)
+                    </select>
+                </div>
+                <div class="col-2"></div>
+            </div>
+        </form>
+        <button type="button" id="btnSearch" class="btn btn-primary" style="float:right;margin-bottom:1%">조회</button>
+    </div>
+    <!-- END Search Area -->
+
+    <br />
+
+    <!-- START List Area -->
+    <div>
+        <table class="table" id="tblList">
+            <thead>
+                <tr>
+                    <th>가맹점번호</th>
+                    <th>가맹점명</th>
+                    <th>대표명</th>
+                    <th>사용방식</th>
+                    <th>지급방식</th>
+                    <th>상태</th>
+                    <th>계약일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <!-- END List Area -->
+
+    <br />
+
+    <!-- START Button Area -->
+    <div style="float:left" id="divRegMemberStore">
+        <button id="btnRegMemberStore" class="btn btn-primary">가맹점 등록</button>
+    </div>
+    <!-- END Button Area -->
+</div>
+<!-- END Main Page -->
+
+
+<!-- START MemberStore INS/UPD Modal -->
+<div class="modal fade" id="memberStoreInsUpdModal" tabindex="-1" role="dialog" aria-labelledby="memberStoreInsUpdModal" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="memberStoreInsUpdModal"><span id="spInsUpdModalTitle"></span></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+          <form id="frmWorkMemberStore">
+              <div class="form-row">
+                  <input type="hidden" id="workmemberStoreNo" value="" />
+                  <div class="form-group col-md-6">
+                      <label>가맹점명</label>
+                      <input type="text" class="form-control" id="workmemberStoreName" value="" />
+                  </div>
+                  <div class="form-group col-md-6">
+                      <label>대표자명</label>
+                      <input type="text" class="form-control" id="workceoName" value="" />
+                  </div>
+              </div>
+              <div class="form-row">
+                  <div class="form-group col-md-6">
+                      <label>사업자 등록번호</label>
+                      <input type="text" class="form-control" id="worklicenseNo" value="" />
+                  </div>
+                  <div class="form-group col-md-6"></div>
+              </div>
+              <div class="form-row">
+                  <label>사용방식</label> &nbsp;&nbsp;
+                  <label class="radio-inline">
+                      <input type="radio" name="workUseType" value="1"> 직접사용 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workUseType" value="2"> 간접사용 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workUseType" value="3"> 복합사용 &nbsp;&nbsp;
+                  </label>
+              </div>
+              <div class="form-row">
+                  <label>지급방식</label> &nbsp;&nbsp;
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideType" value="1"> 일괄지급 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideType" value="2"> 분할지급 &nbsp;&nbsp;
+                  </label>
+              </div>
+              <div class="form-row">
+                  <label>지급주기</label> &nbsp;&nbsp;
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideCycle" value="0"> 일괄지급 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideCycle" value="1"> 년 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideCycle" value="2"> 월 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workProvideCycle" value="3"> 일 &nbsp;&nbsp;
+                  </label>
+              </div>
+              <div class="form-row">
+                  <label>만료주기</label> &nbsp;&nbsp;
+                  <label class="radio-inline">
+                      <input type="radio" name="workExpireCycle" value="0"> 만료없음 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workExpireCycle" value="1"> 년 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workExpireCycle" value="2"> 월 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workExpireCycle" value="3"> 일 &nbsp;&nbsp;
+                  </label>
+              </div>
+              <div class="form-row" id="divWorkUseState">
+                  <label>상태</label> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                  <label class="radio-inline">
+                      <input type="radio" name="workUseState" value="1"> 정상 &nbsp;&nbsp;
+                  </label>
+                  <label class="radio-inline">
+                      <input type="radio" name="workUseState" value="2"> 해지 &nbsp;&nbsp;
+                  </label>
+              </div>
+          </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" id="btnWorkConfirm">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- END MemberStore INS/UPD Modal-->

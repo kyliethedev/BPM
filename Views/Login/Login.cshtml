@@ -1,0 +1,55 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "Home Page";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BPM</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header style="margin-top:10px">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom mb-3">
+            <div class="container">
+                <a class="navbar-brand" style="color:#9ac93c;font-size:30px">BPM</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="text-center">
+            <br /><br />
+            @*<h1 class="display-4" style="color:#9ac93c">BPM</h1>*@
+            <img src="~/LOGO_5.JPG" style="width:40%" />
+            <br /><br /><br />
+
+            @if (ViewBag.ErrorMsg != null)
+            {
+                <p>@ViewBag.ErrorMsg</p>
+            }
+
+            <div id="divLogin">
+                <form method="post" action="@Url.Action("Login", "Login")">
+
+                    <input type="text" name="ID" style="border-right:none;border-left:none;border-top:none" placeholder="Admin ID" required />
+                    <br /><br />
+                    <input type="password" style="border-right:none;border-left:none;border-top:none" placeholder="PassWord" name="Password" required />
+                    <br /><br /><br />
+                    <button type="submit" class="btn" style="background-color:#9ac93c;width:15%;color:white">LOGIN</button>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
