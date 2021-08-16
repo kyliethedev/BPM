@@ -1,6 +1,5 @@
 # BPM
 
-Small Back-Office Page for managing company's benefit point.
-Here is only initial commit(1) because this is final version. 🙄
+Small Back-Office Page(Web) for managing company's benefit point.
 
 - C# (ASP.NET Core)
